@@ -1,0 +1,791 @@
+---
+title: "CaseStudy_SuperStoreSales"
+author: "Chih-Chuan Cheng"
+date: "2024-09-14"
+output: 
+  pdf_document:
+    latex_engine: xelatex
+---
+```{r include=FALSE}
+Sys.setlocale("LC_ALL", "en_US.UTF-8")
+```
+## Introduction
+
+This personal project leverages [Kaggle's Superstore Dataset](https://www.kaggle.com/datasets/vivek468/superstore-dataset-final)  to enhance my skills in data analysis, problem-solving, and programming. The goal is to identify insights, trends, and challenges within the data, and to provide actionable recommendations based on these findings
+
+## Research Method
+
+This project utilizes SQL for initial data cleaning and aggregation, addressing garbled or null data, and adjusting data types. Subsequently, R is employed for advanced data aggregation and visualization.
+
+If you'd like to review my code, here is the link to my GitHub repository [Link](https://github.com/chihchuan35/Practice)
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(tidyverse)
+library(ggplot2)
+library(knitr)
+library(readxl)
+library(gridExtra)
+library(cowplot)
+```
+
+```{r echo=FALSE}
+Superstore_Original <- read.csv("Superstore.csv")
+Season_sale <- read.csv("Season_sale.csv")
+Customer_data <- read.csv("Customer.csv")
+Gross_Profit_Margin <- read.csv("Gross_Profit_Margin.csv")
+```
+
+##  Analysis
+
+Import the original Superstore file and review the data situation.
+
+```{r echo=FALSE}
+head(Superstore_Original)
+```
+
+This project segments the sales data into four seasons. Using SQL (Season.sql), the data from different months is aggregated into four distinct seasonal categories
+
+```{r echo=FALSE}
+Season_sale_total <- Season_sale %>%
+  group_by(Season) %>%
+  summarise(
+    total_sales = sum(total_sales, na.rm = TRUE),
+    total_Quantity = sum(total_Quantity, na.rm = TRUE),
+    total_Profit = sum(totla_Profit, na.rm = TRUE)
+  )
+head(Season_sale_total)
+```
+
+First, we will analyse the specific Sales, Quantity sold, and Profit for each season.
+
+```{r echo=FALSE}
+plot1 <- ggplot(data = Season_sale_total) +
+  geom_bar(mapping = aes(x = Season, y = total_sales, fill = Season), stat = "identity") +
+  scale_fill_manual(values = c("Spring" = "red", "Summer" = "green", "Autumn" = "orange", "Winter" = "blue")) +
+  labs(title = "Total Sales", subtitle = "Based on Season", x = "Season", y = "Sales($)") +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold", hjust = 0.5, size = 16),
+    plot.subtitle = element_text(hjust = 0.5, size = 12),
+    axis.title.x = element_text(face = "bold", size = 12),
+    axis.text.x = element_blank(),
+    axis.title.y = element_text(face = "bold", size = 12))
+
+plot2 <- ggplot(data = Season_sale_total) +
+  geom_bar(mapping = aes(x = Season, y = total_Quantity, fill = Season), stat = "identity") +
+  scale_fill_manual(values = c("Spring" = "red", "Summer" = "green", "Autumn" = "orange", "Winter" = "blue")) +
+  labs(title = "Total Quantity", subtitle = "Based on Season", x = "Season", y = "Quantity") +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold", hjust = 0.5, size = 16),
+    plot.subtitle = element_text(hjust = 0.5, size = 12),
+    axis.title.x = element_text(face = "bold", size = 12),
+    axis.text.x = element_blank(),
+    axis.title.y = element_text(face = "bold", size = 12))
+
+plot3 <- ggplot(data = Season_sale_total) +
+  geom_bar(mapping = aes(x = Season, y = total_Profit, fill = Season), stat = "identity") +
+  scale_fill_manual(values = c("Spring" = "red", "Summer" = "green", "Autumn" = "orange", "Winter" = "blue")) +
+  labs(title = "Total Profit", subtitle = "Based on Season", x = "Season", y = "Profit($)") +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold", hjust = 0.5, size = 16),
+    plot.subtitle = element_text(hjust = 0.5, size = 12),
+    axis.title.x = element_text(face = "bold", size = 12),
+    axis.text.x = element_blank(),
+    axis.title.y = element_text(face = "bold", size = 12))
+
+grid.arrange(plot1,plot2,plot3, ncol = 2)
+```
+
+Based on the histogram, it is evident that sales revenue, quantity sold, and profit in the autumn season stand out compared to other seasons.
+
+Therefore, I proceed to further examine the detailed data for the autumn season
+
+```{r echo=FALSE}
+season_category_summary <- Season_sale %>%
+  group_by(Season, Category, sub.Category) %>%
+  summarise(
+    total_Quantity_sold = sum(total_Quantity, na.rm = TRUE),  
+    total_sales = sum(total_sales, na.rm = TRUE),  
+    total_Profit = sum(totla_Profit, na.rm = TRUE)  
+  ) %>%
+  arrange(Season, Category, sub.Category)
+
+
+Autumn_data <- season_category_summary %>%
+  filter(Season == "Autumn")
+
+Except_Autumn_data <- season_category_summary %>%
+  filter(Season != "Autumn")
+
+category_totla_profit <- Autumn_data %>%
+  group_by(Category) %>%
+  summarise(Profit = sum(total_Profit, na.rm = TRUE))
+
+Except_Autumn_category_totla_profit <- Except_Autumn_data %>%
+  group_by(Category) %>%
+  summarise(Profit = sum(total_Profit, na.rm = TRUE))
+
+
+plot4 <- ggplot(data = Autumn_data) +
+  geom_bar(mapping = aes(x = Category, y = total_Quantity_sold, fill = Category),stat = "identity", position = "stack") +
+  labs(title = "Autumn Sales Quantity", x = "Category", y = "Quantity") +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold", hjust = 0.5, size = 12),
+    plot.subtitle = element_text(hjust = 0.5, size = 12),
+    axis.title.x = element_text(face = "bold", size = 12),
+    axis.text.x = element_blank(),
+    axis.title.y = element_text(face = "bold", size = 12))
+
+plot5 <- ggplot(data = Autumn_data) +
+  geom_bar(mapping = aes(x = Category, y = total_sales, fill = Category),stat = "identity", position = "stack") +
+  labs(title = "Autumn Sales ", x = "Category", y = "Sales($)") +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold", hjust = 0.5, size = 12),
+    plot.subtitle = element_text(hjust = 0.5, size = 12),
+    axis.title.x = element_text(face = "bold", size = 12),
+    axis.text.x = element_blank(),
+    axis.title.y = element_text(face = "bold", size = 12))
+
+plot6 <- ggplot(data = category_totla_profit) +
+  geom_bar(mapping = aes(x = Category, y = Profit, fill = Category),stat = "identity", position = "stack") +
+  labs(title = "Autumn Profit ", x = "Category", y = "Profit($)") +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold", hjust = 0.5, size = 12),
+    plot.subtitle = element_text(hjust = 0.5, size = 12),
+    axis.title.x = element_text(face = "bold", size = 12),
+    axis.text.x = element_blank(),
+    axis.title.y = element_text(face = "bold", size = 12))
+
+plot7 <- ggplot(data = Except_Autumn_data) +
+  geom_bar(mapping = aes(x = Category, y = total_Quantity_sold, fill = Category),stat = "identity", position = "dodge") +
+  labs(title = "Autumn Sales Quantity", x = "Category", y = "Quantity") +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold", hjust = 0.5, size = 12),
+    plot.subtitle = element_text(hjust = 0.5, size = 12),
+    axis.title.x = element_text(face = "bold", size = 12),
+    axis.text.x = element_blank(),
+    axis.title.y = element_text(face = "bold", size = 12))
+
+
+grid.arrange(plot4,plot5,plot6, ncol = 2)
+```
+
+Focusing solely on the autumn season, the sales quantity is dominated by Office Supplies, while the other two categories show similar quantities. However, in terms of total sales revenue, Technology ranks first.
+
+From these observations, I can infer that the unit prices for Technology and Furniture products are relatively higher, while Office Supplies have the lowest unit price.
+
+Additionally, when considering profit, the cost of Furniture is significantly higher than the other two categories, resulting in higher sales revenue but lower profit margins. On the other hand, Office Supplies follow a high-volume, low-margin strategy, achieving profitability through large sales volumes and low costs. Finally, Technology products tend to yield higher profits per sale.
+
+
+We further break down the different products within each of the three categories to identify the most popular products in each category.
+
+```{r echo=FALSE}
+Furniture_total <- Autumn_data %>%
+  filter(Category == "Furniture") %>%
+  summarise(total_Furniture_Quantity = sum(total_Quantity_sold)) %>%
+  pull(total_Furniture_Quantity)
+
+Furnishings_Percentage_Quantity <- Autumn_data %>%
+  filter(Category == "Furniture", sub.Category == "Furnishings") %>%
+  summarise(Furnishings_Quantity = sum(total_Quantity_sold)) %>%
+  mutate(Furnishings_Percentage = (Furnishings_Quantity / Furniture_total) * 100)
+
+ggplot(data = Autumn_data, aes(x = Category, y = total_Quantity_sold, fill = sub.Category)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  scale_fill_manual(values = c("#FF6347", "#4682B4", "#32CD32", "#FFD700", "#8A2BE2", 
+                               "#FF4500", "#2E8B57", "#FF69B4", "#40E0D0", "#6A5ACD", 
+                               "#D2691E", "#DC143C", "#228B22", "#8B0000", "#00008B", 
+                               "#20B2AA", "#DAA520")) +
+  labs(title = "Sales Quantity in Autumn by Category and Sub-Category",
+     x = "Category",
+     y = "Total Quantity Sold") +
+  theme_minimal()
+```
+
+
+
+```{r echo=FALSE}
+furniture_data <- filter(Autumn_data, Category == "Furniture")
+
+furniture_long <- furniture_data %>%
+  pivot_longer(cols = c(total_sales, total_Profit, total_Quantity_sold), 
+               names_to = "Metric", 
+               values_to = "Value")
+
+facet_labels <- c(
+  total_Profit = "Profit",
+  total_sales = "Sales",
+  total_Quantity_sold = "Quantity Sold"
+)
+
+ggplot(data = furniture_long, aes(x = sub.Category, y = Value, fill = sub.Category)) +
+  geom_bar(stat = "identity", position = "dodge", width = 0.7) +  
+  scale_fill_manual(values = c("#8A2BE2", "#FF4500", "#6A5ACD", "#DAA520")) +
+  facet_wrap(~ Metric, scales = "free_y", labeller = as_labeller(facet_labels)) +  
+  labs(title = "Sales and Profit in Autumn by Sub-Category",
+       x = "furniture", 
+       y = "Value") +
+  theme_minimal() +
+  theme(legend.position = "right", 
+        axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+First, I conducted an in-depth analysis of the Furniture category. The product generating the most revenue is chairs, followed by furnishings. However, desks and bookcases have negative profitability. Despite having the lowest sales quantities, they rank second and third in terms of revenue, indicating that these two products likely have higher costs.
+
+```{r}
+Office_Supplies_data <- filter(Autumn_data, Category == "Office Supplies")
+
+Office_Supplies_long <- Office_Supplies_data %>%
+  pivot_longer(cols = c(total_sales, total_Profit, total_Quantity_sold), 
+               names_to = "Metric", 
+               values_to = "Value")
+
+ggplot(data = Office_Supplies_long, aes(x = sub.Category, y = Value, fill = sub.Category)) +
+  geom_bar(stat = "identity", position = "dodge", width = 0.7) +  
+  scale_fill_manual(values = c("#4682B4", "#32CD32", "#FFD700", "#FF69B4", "#40E0D0", "#D2691E", "#228B22", "#00008B", "#20B2AA")) +
+  facet_wrap(~ Metric, scales = "free_y", labeller = as_labeller(facet_labels)) +  
+  labs(title = "Sales and Profit in Autumn by Sub-Category",
+       x = "Office Supplies", 
+       y = "Value") +
+  theme_minimal() +
+  theme(legend.position = "right", 
+        axis.text.x = element_text(size = 6,angle = 45, hjust = 1))
+```
+
+In the Office Supplies category, only supplies show negative profitability, though their sales volume and revenue are not significant.
+
+The standout products in this category are binders and paper, which generate the highest profits. Paper has low sales revenue but high sales volume, indicating that its cost is likely very low, allowing for higher profit margins. Binders, with both high sales revenue and volume, reflect stable market demand and represent a product with potential for growth and profitability.
+
+Additionally, appliances and storage-related products also perform well.
+
+```{r echo=FALSE}
+Technology_data <- filter(Autumn_data, Category == "Technology")
+
+Technology_long <- Technology_data %>%
+  pivot_longer(cols = c(total_sales, total_Profit, total_Quantity_sold), 
+               names_to = "Metric", 
+               values_to = "Value")
+
+ggplot(data = Technology_long, aes(x = sub.Category, y = Value, fill = sub.Category)) +
+  geom_bar(stat = "identity", position = "dodge", width = 0.7) +  
+  scale_fill_manual(values = c("#FF6347", "#2E8B57" , "#DC143C","#8B0000" )) +
+  facet_wrap(~ Metric, scales = "free_y", labeller = as_labeller(facet_labels)) +  
+  labs(title = "Sales and Profit in Autumn by Sub-Category",
+       x = "Technology", 
+       y = "Value") +
+  theme_minimal() +
+  theme(legend.position = "right", 
+        axis.text.x = element_text(size = 6,angle = 45, hjust = 1))
+
+```
+
+In the Technology category, the first notable observation is the machines segment, which shows high sales revenue but negative profitability, likely due to high costs. Copiers, being a high-ticket item, generate the highest profit despite having the lowest sales volume. Meanwhile, phones and accessories demonstrate more consistent and stable performance
+
+The above provides a general overview of the data. Based on the findings, I plan to explore two key questions in more detail. First, I will investigate the reasons why profits are higher in the autumn season compared to other seasons. Second, I will conduct a deeper analysis by segmenting the data by region for further exploration
+
+Therefore, I used SQL (Customer in Autumn.sql) to aggregate new data, including seasonal and customer information, for further analysis.
+
+```{r echo=FALSE}
+head(Customer_data)
+```
+
+First, I will analyze the purchasing behavior across different regions during the autumn season
+
+```{r echo=FALSE}
+Region_Buy <- Customer_data %>%
+  group_by(Region, Category, `sub.Category`, Segment,Season) %>%
+  summarise(Quantity = sum(total_Quantity))
+
+Region_Buy_Autumn <- Region_Buy %>%
+  filter(Season == "Autumn")
+
+plot8 <- ggplot(data = Region_Buy) +
+  geom_bar(mapping = aes(x = Region, y = Quantity, fill = Segment),stat = "identity", position = "stack",width = 0.65) +
+  labs(title = "Total_Quantity_by_Region", subtitle = "Segment Proportion")+
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold", hjust = 0.5, size = 12),
+    plot.subtitle = element_text(hjust = 0.5, size = 12),
+    axis.title.x = element_text(face = "bold", size = 12),
+    axis.text.x = element_text(angle = 45),
+    axis.title.y = element_text(face = "bold", size = 12))
+
+plot9 <- ggplot(data = Region_Buy_Autumn) +
+  geom_bar(mapping = aes(x = Region, y = Quantity, fill = Segment),stat = "identity", position = "stack",width = 0.65) +
+  labs(title = "Total_Quantity_by_Region(Autumn)", subtitle = "Segment Proportion")+
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold", hjust = 0.5, size = 12),
+    plot.subtitle = element_text(hjust = 0.5, size = 12),
+    axis.title.x = element_text(face = "bold", size = 12),
+    axis.text.x = element_text(angle = 45),
+    axis.title.y = element_text(face = "bold", size = 12))
+
+
+plot10 <- ggplot(data = Region_Buy) +
+  geom_bar(mapping = aes(x = Region, y = Quantity, fill = Category),stat = "identity", position = "stack",width = 0.65) +
+  labs(title = "Total_Quantity_by_Region", subtitle = "Category Proportion")+
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold", hjust = 0.5, size = 12),
+    plot.subtitle = element_text(hjust = 0.5, size = 12),
+    axis.title.x = element_text(face = "bold", size = 12),
+    axis.text.x = element_text(angle = 45),
+    axis.title.y = element_text(face = "bold", size = 12))
+
+plot11 <- ggplot(data = Region_Buy_Autumn) +
+  geom_bar(mapping = aes(x = Region, y = Quantity, fill = Category),stat = "identity", position = "stack",width = 0.65) +
+  labs(title = "Total_Quantity_by_Region(Autumn)", subtitle = "Category Proportion")+
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold", hjust = 0.5, size = 12),
+    plot.subtitle = element_text(hjust = 0.5, size = 12),
+    axis.title.x = element_text(face = "bold", size = 12),
+    axis.text.x = element_text(angle = 45),
+    axis.title.y = element_text(face = "bold", size = 12))
+
+grid.arrange(plot8,plot9,plot10,plot11,ncol = 2, nrow = 2)
+```
+
+Looking at sales quantities by region, the West and East rank first and second, respectively, while the South has the lowest sales, with the Central region in third place.
+
+In terms of regional sales, the top two charts are segmented by customer type. From the content of these charts, it is evident that the overall customer type proportions did not change significantly with the season. Similarly, when analyzing the proportion of products purchased, there is little variation, consistent with the customer type distribution.
+
+Therefore, we can conclude that the surge in autumn sales is not due to changes in customer composition, regional purchasing behavior, or variations in major product categories
+
+```{r echo=FALSE}
+
+Season_Buy <- Customer_data %>%
+  group_by(Region,Season,Category,Segment,sub.Category) %>%
+  summarise(Quantity = sum(total_Quantity))
+
+Season_Buy$Season <- factor(Season_Buy$Season, levels = c("Spring", "Summer", "Autumn", "Winter"))
+
+Season_Buy_summary <- Season_Buy %>%
+  group_by(Region, Season, Category) %>%
+  summarise(total_Quantity = sum(Quantity))
+
+
+ggplot(data = Season_Buy_summary, aes(x = Season, y = total_Quantity, group = Region, color = Region)) +
+  geom_line(size = 1.2) +  
+  geom_point(size = 3) +   
+  labs(title = "Seasonal Quantity Sold by Region",
+       x = "Season",
+       y = "Total Quantity Sold") +
+  theme_minimal() +
+  theme(legend.position = "right")
+```
+
+```{r}
+Discount_Average <- read.csv("Discount.csv")
+head(Discount_Average)
+```
+
+However, according to the line chart, sales increased across all regions during the autumn season. To investigate further, I used SQL (discount.sql) to aggregate a new dataset and checked whether the average discount in autumn was higher than in other months. Surprisingly, autumn had the lowest discount rate of all four seasons.
+
+Unfoturantely, without details on the store’s promotional activities and their duration, along with the absence of customer feedback, it is difficult to conduct a qualitative analysis. The possible hypotheses for the rise in autumn sales are as follows:
+
+Autumn, defined as September, October, and November in the aggregation, coincides with Thanksgiving and back-to-school weeks, which may have increased purchasing intent.
+
+Additionally, many U.S. companies often begin their year-end accounting in October or November to avoid conflicts with the Christmas holiday season, potentially boosting sales during this time.
+
+Further data is needed for deeper exploration.
+
+Therefore, I would like to move on to the second topic, comparing the unique conditions across different regions. The line chart below illustrates the profit generated by each region in each season.
+
+```{r echo=FALSE}
+Region_Profit <- Customer_data %>%
+  group_by(Region, Category, Season,sub.Category) %>%
+  summarise(Profit = sum(total_Profit))
+
+Region_Profit$Season <- factor(Region_Profit$Season, levels = c("Spring", "Summer", "Autumn", "Winter"))
+
+Season_Profit_summary <- Region_Profit %>%
+  group_by(Region, Season) %>%
+  summarise(total_Profit = sum(Profit))
+
+Season_Profit_summary$Season <- factor(Season_Profit_summary$Season, levels = c("Spring", "Summer", "Autumn", "Winter"))
+
+
+
+Region_Profit_East <- Region_Profit %>%
+  filter(Region == 'East')
+
+Region_Profit_South <- Region_Profit %>%
+  filter(Region == 'South')
+  
+
+ggplot(data = Season_Profit_summary, aes(x = Season, y = total_Profit, group = Region, color = Region)) +
+  geom_line(size = 1.2) +  
+  geom_point(size = 3) +   
+  labs(title = "Seasonal Porfit by Region",
+       x = "Season",
+       y = "Total Profit") +
+  theme_minimal() +
+  theme(legend.position = "right")
+```
+
+It is clear that the increase in sales revenue and quantity in the autumn season led to a significant rise in profits across all regions, except for the South. The South experienced a decline in profits, prompting further investigation into the causes of this downturn.
+
+```{r echo=FALSE}
+plot12 <- ggplot(data = Region_Profit_East, aes(x = Season, y = Profit, fill = Category)) +
+    geom_bar(stat = "identity", position = "stack") +
+    labs(title = "Total Profit in East by Season and Category",
+         x = "Season",
+         y = "Total Profit") +
+    theme_minimal() +
+    theme(legend.position = "right")
+  
+plot13 <- ggplot(data = Region_Profit_South, aes(x = Season, y = Profit, fill = Category)) +
+    geom_bar(stat = "identity", position = "stack") +
+    labs(title = "Total Profit in South by Season and Category",
+         x = "Season",
+         y = "Total Profit") +
+    theme_minimal() +
+    theme(legend.position = "right")
+
+grid.arrange(plot12,plot13)
+```
+
+We will focus on the East and South, comparing the profit proportions across seasons in both regions.
+
+In the East, profits are relatively consistent across spring, summer, and autumn. However, in the South, profits are noticeably higher in spring. If we could integrate weather data into the analysis, it might reveal a compelling correlation.
+
+Overall, focusing on our main subject—autumn—the East generated higher profits from technology products, whereas the South experienced negative profitability in this category.
+
+```{r echo=FALSE}
+Season_Buy_summary <- Season_Buy %>%
+  group_by(Region, Season,Category) %>%
+  summarise(total_Quantity = sum(Quantity))
+
+Season_Buy_summary_sub <- Season_Buy %>%
+  group_by(Region, Season,Category, `sub.Category`) %>%
+  summarise(total_Quantity = sum(Quantity))
+
+Season_Buy_summary_East <- Season_Buy_summary %>%
+  filter(Region == 'East')
+
+Season_Buy_summary_South <- Season_Buy_summary %>%
+  filter(Region == 'South')
+
+plot14 <- ggplot(data = Season_Buy_summary_East, aes(x = Season, y = total_Quantity, fill = Category)) +
+  geom_bar(stat = "identity", position = "stack") +
+  labs(title = "Total Quantity in East by Season and Category",
+       x = "Season",
+       y = "Total Quantity ") +
+  theme_minimal() +
+  theme(legend.position = "right")
+
+
+plot15 <- ggplot(data = Season_Buy_summary_South, aes(x = Season, y = total_Quantity, fill = Category)) +
+  geom_bar(stat = "identity", position = "stack") +
+  labs(title = "Total Quantity in South by Season and Category",
+       x = "Season",
+       y = "Total Quantity ") +
+  theme_minimal() +
+  theme(legend.position = "right")
+
+grid.arrange(plot14,plot15)
+```
+
+Looking at the three main product categories, the proportion of products sold is not significantly different. Therefore, it is likely that the variance in profitability is driven by the individual gross margins of specific products.
+
+```{r echo=FALSE}
+Season_Buy_summary_sub_South_Autumn1 <- Season_Buy %>%
+  filter(Region == "South" & Season == "Autumn") %>%
+  group_by(Region,Season,Category,sub.Category) %>%
+  summarise(total_Quantity = sum(Quantity))
+
+Season_Buy_summary_sub_East_Autumn1 <- Season_Buy %>%
+  filter(Region == "East" & Season == "Autumn") %>%
+  group_by(Region,Season,Category,sub.Category) %>%
+  summarise(total_Quantity = sum(Quantity))
+
+total_quantity_south <- sum(Season_Buy_summary_sub_South_Autumn1$total_Quantity, na.rm = TRUE)
+  
+total_quantity_east <- sum(Season_Buy_summary_sub_East_Autumn1$total_Quantity, na.rm = TRUE)
+
+Season_Buy_summary_sub_South_Autumn <- Season_Buy_summary_sub_South_Autumn1 %>%
+  mutate(Percentage = (total_Quantity / total_quantity_south) * 100)
+
+Season_Buy_summary_sub_East_Autumn <- Season_Buy_summary_sub_East_Autumn1 %>%
+  mutate(Percentage = (total_Quantity / total_quantity_east) * 100)
+
+total_quantity_south <- sum(Season_Buy_summary_sub_South_Autumn1$total_Quantity, na.rm = TRUE)
+total_quantity_east <- sum(Season_Buy_summary_sub_East_Autumn1$total_Quantity, na.rm = TRUE)
+
+
+ggplot(data = Season_Buy_summary_sub_East_Autumn, aes(x = Category, y = Percentage, fill = sub.Category)) +
+  geom_bar(stat = "identity", position = "stack", width = 0.65) +
+  scale_fill_manual(values = c("#FF6347", "#4682B4", "#32CD32", "#FFD700", "#8A2BE2", 
+                               "#FF4500", "#2E8B57", "#FF69B4", "#40E0D0", "#6A5ACD", 
+                               "#D2691E", "#DC143C", "#228B22", "#8B0000", "#00008B", 
+                               "#20B2AA", "#DAA520")) +
+  labs(title = "Percentage of Total Quantity in East in Autumn",
+       x = "Category",
+       y = "Percentage (%)") +
+  theme_minimal() +
+  theme(legend.position = 'right')
+```
+
+
+```{r echo=FALSE}
+Season_Buy_summary_sub_South_Autumn <- Season_Buy_summary_sub_South_Autumn %>%
+  mutate(Percentage = (total_Quantity / total_quantity_south) * 100)
+
+Season_Buy_summary_sub_East_Autumn <- Season_Buy_summary_sub_East_Autumn %>%
+  mutate(Percentage = (total_Quantity / total_quantity_east) * 100)
+
+ggplot(data = Season_Buy_summary_sub_South_Autumn, aes(x = Category, y = Percentage, fill = sub.Category)) +
+  geom_bar(stat = "identity", position = "stack",width = 0.65) +
+  scale_fill_manual(values = c("#FF6347", "#4682B4", "#32CD32", "#FFD700", "#8A2BE2", 
+                               "#FF4500", "#2E8B57", "#FF69B4", "#40E0D0", "#6A5ACD", 
+                               "#D2691E", "#DC143C", "#228B22", "#8B0000", "#00008B", 
+                               "#20B2AA", "#DAA520")) +
+  labs(title = "Percentage of Total Quantity in South in Autumn",
+       x = "Category",
+       y = "Percentage (%)") +
+  theme_minimal() +
+  theme(legend.position = "right")
+```
+
+We further analyzed the consumption proportions of individual products in the East and South by sub-category, and no significant differences were found between the two regions.
+
+This supports the earlier hypothesis that the decline in profits is likely due to the varying gross margins of specific products. Additionally, the differences in costs and profitability associated with delivering certain products to different regions may have contributed to the drop in profits in the South during the autumn season.
+
+Therefore, we will separate all products from the East and South for a detailed profit comparison.
+
+```{r echo=FALSE}
+Region_Profit_East_Autumn <- Region_Profit %>%
+  filter(Region == 'East' & Season == 'Autumn')
+
+Region_Profit_South_Autumn <- Region_Profit %>%
+  filter(Region == 'South'& Season =='Autumn')
+
+ggplot(data = Region_Profit_East_Autumn) +
+  geom_bar(mapping= aes(x = sub.Category, y = Profit, fill = sub.Category),stat = "identity", position = "stack")+
+  scale_fill_manual(values = c("#FF6347", "#4682B4", "#32CD32", "#FFD700", "#8A2BE2", 
+                               "#FF4500", "#2E8B57", "#FF69B4", "#40E0D0", "#6A5ACD", 
+                               "#D2691E", "#DC143C", "#228B22", "#8B0000", "#00008B", 
+                               "#20B2AA", "#DAA520")) +
+  labs(title = "SubCategory Profit in East in Autumn")+
+  theme_minimal() +
+    theme(
+      plot.title = element_text(face = "bold", hjust = 0.5, size = 12),
+      axis.title.x = element_text(face = "bold", size = 12),
+      axis.text.x = element_text(angle = 60),
+      axis.title.y = element_text(face = "bold", size = 12))
+
+```
+
+
+```{r echo=FALSE}
+ggplot(data = Region_Profit_East_Autumn) +
+  geom_bar(mapping= aes(x = sub.Category, y = Profit, fill = Category),stat = "identity", position = "stack")+
+  scale_fill_manual(values = c("#FF6347", "#4682B4", "#32CD32", "#FFD700", "#8A2BE2", 
+                               "#FF4500", "#2E8B57", "#FF69B4", "#40E0D0", "#6A5ACD", 
+                               "#D2691E", "#DC143C", "#228B22", "#8B0000", "#00008B", 
+                               "#20B2AA", "#DAA520")) +
+  labs(title = "SubCategory Profit in East in Autumn", subtitle = "Fill by category")+
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold", hjust = 0.5, size = 12),
+    axis.title.x = element_text(face = "bold", size = 12),
+    axis.text.x = element_text(angle = 60),
+    axis.title.y = element_text(face = "bold", size = 12))
+```
+
+```{r echo=FALSE}
+ggplot(data = Region_Profit_South_Autumn) +
+  geom_bar(mapping= aes(x = sub.Category, y = Profit, fill = sub.Category),stat = "identity", position = "stack")+
+  scale_fill_manual(values = c("#FF6347", "#4682B4", "#32CD32", "#FFD700", "#8A2BE2", 
+                               "#FF4500", "#2E8B57", "#FF69B4", "#40E0D0", "#6A5ACD", 
+                               "#D2691E", "#DC143C", "#228B22", "#8B0000", "#00008B", 
+                               "#20B2AA", "#DAA520")) +
+  labs(title = "SubCategory Profit in South in Autumn")+
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold", hjust = 0.5, size = 12),
+    axis.title.x = element_text(face = "bold", size = 12),
+    axis.text.x = element_text(angle = 60),
+    axis.title.y = element_text(face = "bold", size = 12))
+```
+
+
+
+```{r echo=FALSE}
+ggplot(data = Region_Profit_South_Autumn) +
+  geom_bar(mapping= aes(x = sub.Category, y = Profit, fill = Category),stat = "identity", position = "stack")+
+  scale_fill_manual(values = c("#FF6347", "#4682B4", "#32CD32", "#FFD700", "#8A2BE2", 
+                               "#FF4500", "#2E8B57", "#FF69B4", "#40E0D0", "#6A5ACD", 
+                               "#D2691E", "#DC143C", "#228B22", "#8B0000", "#00008B", 
+                               "#20B2AA", "#DAA520")) +
+  labs(title = "SubCategory Profit in South in Autumn", subtitle = "Fill by Category")+
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold", hjust = 0.5, size = 12),
+    axis.title.x = element_text(face = "bold", size = 12),
+    axis.text.x = element_text(angle = 60),
+    axis.title.y = element_text(face = "bold", size = 12))
+```
+
+The most significant differences are clearly visible from these four charts. The negative profits from desks and the slight losses in Art are not the primary factors.
+
+The key point is that machines, which generate profit in the East, have become a severely unprofitable product in the South, almost entirely offsetting the profits from chairs and accessories.
+
+```{r echo=FALSE}
+Region_Machine_Profit <- Region_Profit %>%
+  group_by(Region,Season) %>%
+  filter(sub.Category == "Machines") %>%
+  summarise(Machine_Profit = sum(Profit))
+
+Region_Machine_Profit$Season <- factor(Region_Machine_Profit$Season, levels = c("Spring", "Summer", "Autumn", "Winter"))
+
+ggplot(data = Region_Machine_Profit, aes(x = Season, y = Machine_Profit, color = Region, group = Region)) + 
+  geom_line(linewidth = 1.5) +  
+  geom_point(size = 3) +   
+  labs(title = "Machine Profit by Season and Region", 
+       x = "Season", 
+       y = "Machine Profit") + 
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold", hjust = 0.5, size = 14),
+    axis.title.x = element_text(size = 12),
+    axis.title.y = element_text(size = 12)
+  )
+```
+
+Therefore, we will focus on machines for further analysis. As mentioned at the beginning of this project, the machines segment shows high sales revenue but negative profitability, likely due to high costs. According to the line chart, we can see that machines are unprofitable in all regions except the East, with the South being the most affected.
+
+```{r echo=FALSE}
+region_sale <- Customer_data %>%
+  filter(sub.Category == 'Machines') %>%
+  group_by(Season, Region,sub.Category) %>%
+  summarise(Sales = sum(total_sales),
+            Profit = sum(total_Profit),
+            Quantity = sum(total_Quantity))
+
+ggplot(data = region_sale, aes(x = Region, y = Quantity)) +
+  geom_boxplot(fill = "lightblue", color = "darkblue") +
+  labs(title = "Machines Quantity Distribution by Region", x = "Region", y = "Quantity") +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold", hjust = 0.5, size = 14),
+    axis.title.x = element_text(face = "bold", size = 12),
+    axis.title.y = element_text(face = "bold", size = 12)
+  )
+```
+
+
+```{r echo=FALSE}
+
+ggplot(data = region_sale, aes(x = Region, y = Sales)) +
+  geom_boxplot(fill = "lightblue", color = "darkblue") +
+  labs(title = "Machines Sales Distribution by Region", x = "Region", y = "Sales") +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold", hjust = 0.5, size = 14),
+    axis.title.x = element_text(face = "bold", size = 12),
+    axis.title.y = element_text(face = "bold", size = 12)
+  )
+
+```
+
+
+```{r echo=FALSE}
+ggplot(data = region_sale, aes(x = Region, y = Profit)) +
+  geom_boxplot(fill = "lightblue", color = "darkblue") +
+  labs(title = "Machines Profit Distribution by Region", x = "Region", y = "Profit") +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold", hjust = 0.5, size = 14),
+    axis.title.x = element_text(face = "bold", size = 12),
+    axis.title.y = element_text(face = "bold", size = 12)
+  )
+```
+
+Based on the three comparative charts above, we observe the distribution patterns. The East and West have the highest number of machine orders, with an outlier in the East where a single order exceeded 80 units. This is reflected in the second box plot, where the East shows the highest sales revenue.
+
+However, the puzzling part is that despite fewer orders in the South, it has the second-highest sales revenue distribution. This ultimately results in more than half of the total sales showing negative profitability.
+
+Thus, the core issue lies in the extremely low gross margins of machines sold in the South.
+
+```{r}
+
+region_sale_GrossProfitMargin  <- region_sale %>%
+  mutate(Gross_Profit_Margin = (Profit / Sales) * 100)
+
+glimpse(region_sale_GrossProfitMargin)
+
+average_GPM <- mean(region_sale_GrossProfitMargin$Gross_Profit_Margin, na.rm = TRUE)
+
+print(paste("The average Gross Profit Margin for machines is:", round(average_GPM, 2), "%"))
+```
+
+Based on the calculations, the overall gross margin for Machines products averages 5.35%. This suggests a relatively low profitability across the category, aligning with the previous findings
+
+
+
+```{r echo=FALSE}
+region_sale_Autumn <- region_sale %>%
+  filter(Season == 'Autumn')
+
+autumn_region_sale_GrossProfitMargin  <- region_sale_Autumn %>%
+  mutate(Gross_Profit_Margin = (Profit / Sales) * 100)
+
+average_GPM_Autumn <- mean(autumn_region_sale_GrossProfitMargin$Gross_Profit_Margin, na.rm = TRUE)
+
+print(paste("The average Gross Profit Margin for Autumn is:", round(average_GPM_Autumn, 2), "%"))
+```
+
+If we limit the analysis to the autumn season, the gross margin for Machines products drops to -10.17%.
+
+```{r echo=FALSE}
+average_GPM_by_region_autumn <- autumn_region_sale_GrossProfitMargin %>%
+  group_by(Region) %>%
+  summarise(Average_GPM = mean(Gross_Profit_Margin, na.rm = TRUE))
+
+print(average_GPM_by_region_autumn)
+
+```
+
+
+```{r echo=FALSE}
+ggplot(data = average_GPM_by_region_autumn, aes(x = Region, y = Average_GPM, fill = Region)) +
+  geom_bar(stat = "identity", position = "dodge", width = 0.7) +
+  labs(title = "Average Gross Profit Margin in Autumn by Region", 
+       x = "Region", 
+       y = "Average Gross Profit Margin (%)") +
+  scale_fill_manual(values = c("#FF6347", "#4682B4", "#32CD32", "#FFD700")) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold", hjust = 0.5, size = 14),
+    axis.title.x = element_text(face = "bold", size = 12),
+    axis.title.y = element_text(face = "bold", size = 12),
+    legend.position = "none"
+  )
+```
+
+
+If we separate the four regions for comparison, we find that the gross margin for machines sold in the South reaches -23%.
+
+
+## Conclusion
+
+Based on this personal project, we have identified that machines, as a product, have excessively high costs. Assuming the product itself remains consistent, the variation in costs could be attributed to transportation expenses. This dataset may come from a retailer whose warehouses are located far from the southern United States. Alternatively, the manufacturer might be far from the southern region, increasing logistics costs and resulting in lower or even negative profits.
+
+To address this issue, expanding warehousing or establishing additional logistics centers to enable more efficient distribution would be worth considering. Another potential solution is to store and distribute products to the southern U.S. during off-peak periods, reducing transportation costs during peak seasons. This approach could help improve the company's profitability and the gross margin of the product.
+
+In addition, we can use the dataset in future research to conduct a more in-depth analysis of shipping times and methods. This would involve studying the correlation between delivery time, shipping methods, and product gross margins.
+
+
+## Limitation
+
+The limitation of this study lies in the lack of data on climate, customer demographics, and internal retail information, making it difficult to define the specific reasons for the increase in autumn sales.
